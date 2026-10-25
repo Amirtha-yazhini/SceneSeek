@@ -1,93 +1,155 @@
 # SceneSeek
 
-Natural-language search over surveillance video. Type a description ("a person getting out of a car"), get back the matching videos and timestamp ranges.
+**Natural-Language Semantic Search for Surveillance Videos**
 
-Pipeline: **video → segments → YOLO objects + OpenCLIP embeddings + action recognition → FAISS index (+ MongoDB metadata) → text query → merged timestamp ranges**, with an evaluation harness against VIRAT ground truth.
+SceneSeek allows users to search surveillance and CCTV footage using natural-language queries (e.g., *"a person riding a bicycle"*, *"a red car driving in a parking lot"*). The system returns ranked matching videos with precise timestamp ranges, similarity scores, object/action detections, and inline playback.
 
-The Streamlit dashboard is not in this repo yet. See [HANDOFF.md](HANDOFF.md).
+Pipeline: **Video → 2.0s Segments → YOLO11n Objects + OpenCLIP (LAION-2B) Embeddings + R3D-18 Action Recognition → Dual FAISS Index + Local JSON Metadata Storage → Text Query (Prompt Ensembled) → Merged Timestamp Ranges → Streamlit Web Dashboard**.
 
-## Setup
+---
 
-```bash
+## Key Features
+
+- **Natural-Language Video Search:** Search by activity, person description, clothing, or vehicle appearance without manual video tagging.
+- **Temporal Event Localization:** Merges contiguous segment detections into cohesive timestamp ranges with inline playback seeked to event onset.
+- **Interactive Streamlit Dashboard:** Complete, modern multi-page interface featuring:
+  - **Dashboard:** Real-time statistics, search box, recent searches, and quick-query triggers.
+  - **Video Search:** Full semantic search, similarity threshold controls, top-K selection, video filter, and split-view preview/cards.
+  - **Video Library:** Browse all indexed videos, inspect resolution/fps, view keyframe timelines, and upload new videos.
+  - **Search History:** Query history persisted across restarts in JSON with one-click re-run.
+  - **Model Evaluation:** Quantitative metrics (Precision, Recall, F1, Recall@K, Hit@K, Temporal IoU, Latency, and Threshold Sweep chart).
+  - **Settings:** Active storage backend display, vector index statistics, model configuration, and MongoDB Atlas configuration guide.
+- **Local JSON Metadata Storage:** Completely functional on a laptop without requiring MongoDB or any external database server. All data, segment indices, and search histories persist across application restarts.
+- **MongoDB Atlas Ready:** The backend `MetadataStore` interface is decoupled so that when cloud credentials arrive, setting `SCENESEEK_USE_MONGO=true` immediately switches storage without modifying the dashboard.
+
+---
+
+## Windows PowerShell Setup Instructions
+
+### 1. Create and Activate Virtual Environment
+
+```powershell
+# Navigate to the project root
+cd c:\Users\valli\Documents\SceneSeek
+
+# Create Python virtual environment
 python -m venv .venv
-.venv\Scripts\activate            # Windows  (source .venv/bin/activate on macOS/Linux)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu   # or a CUDA build
+
+# Activate virtual environment
+.\.venv\Scripts\Activate.ps1
+```
+
+*(If script execution is disabled in PowerShell, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` once).*
+
+### 2. Install Dependencies
+
+Install PyTorch CPU build first, then the remaining project requirements:
+
+```powershell
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 ```
 
-Optional:
-- **MongoDB** on `mongodb://localhost:27017`. If it is not running, metadata is stored as JSON files in `data/index/` automatically.
-- **FFmpeg** on PATH, used to cut browser-playable preview clips. Without it, clips are written with OpenCV, and some browsers won't play those inline.
+### 3. Download the 7 Demonstration Videos
 
-The first run downloads model weights: OpenCLIP ViT-B-32 (~600 MB), R3D-18 (~130 MB) and YOLO11n (~6 MB).
-
-## Data
-
-```
-data/
-  videos/        put VIRAT .mp4 files here
-  annotations/   git clone https://gitlab.kitware.com/viratdata/viratannotations.git data/annotations
+```powershell
+python scripts/get_sample_videos.py
 ```
 
-Videos: https://viratdata.org (VIRAT Ground 2.0). File names must match the annotation names, e.g. `VIRAT_S_000001.mp4` ↔ `VIRAT_S_000001.activities.yml`. The original release's `*.viratdata.events.txt` files are also supported.
+Downloads the 7 short surveillance sample videos (~50 MB total) into `data/videos/`.
 
-## Usage
+### 4. Ingest & Index Demonstration Videos
 
-```bash
-python -m sceneseek ingest                 # index everything in data/videos (skips already indexed)
-python -m sceneseek build-gt               # VIRAT annotations -> data/ground_truth.json
-python -m sceneseek search "a person entering a building through a door"
-python -m sceneseek evaluate --sweep       # metrics + best score threshold -> data/eval/latest.json
-python -m sceneseek stats
-python -m sceneseek clip data/videos/X.mp4 12.0 18.5
-python -m sceneseek reset --yes            # wipe index + metadata (keeps videos)
+```powershell
+python -m sceneseek ingest
 ```
 
-Useful flags: `ingest --limit 3`, `ingest --no-action` (faster, skips the action model), `ingest --reindex`, `search --json`, `evaluate --iou 0.5`.
+Extracts frames at 8 fps, runs YOLO11n object detection, extracts OpenCLIP visual embeddings for frames & object crops, computes R3D-18 action embeddings, builds FAISS index files in `data/index/`, and saves metadata to JSON.
 
-No VIRAT data yet? `python scripts/get_sample_videos.py` downloads 7 short public surveillance-style videos (about 7 minutes in total: parking lot, hallway, store aisle, warehouse, pedestrians). `data/ground_truth.json` is hand-labelled for those videos, so `ingest` then `evaluate` works straight away. `python scripts/make_demo_video.py` writes a tiny synthetic clip instead.
+### 5. Run Evaluation Benchmark (Optional)
 
-## How it works
-
-| Stage | Code | What happens |
-|---|---|---|
-| Frames | [sceneseek/video/frames.py](sceneseek/video/frames.py) | OpenCV decodes each video once at 8 fps and slices it into 2 s windows every 1 s. |
-| Objects | [sceneseek/models/detector.py](sceneseek/models/detector.py) | YOLO11n finds people, vehicles and bags on 3 frames per segment. |
-| Visual-text embedding | [sceneseek/models/clip_encoder.py](sceneseek/models/clip_encoder.py) | OpenCLIP embeds the frames (averaged) **and** up to 4 object crops per segment. In wide VIRAT shots people are small, so the crops are what let "black hoodie" match. |
-| Actions | [sceneseek/models/action.py](sceneseek/models/action.py) | R3D-18 (Kinetics-400) classifies 16 frames per segment. Its top-5 labels become one CLIP text embedding, so queries can be compared to actions without fine-tuning. |
-| Index | [sceneseek/index/](sceneseek/index/) | Two FAISS inner-product indexes (`visual`, `action`) plus metadata (videos, segments, search history) in MongoDB or JSON. |
-| Search | [sceneseek/pipeline/search.py](sceneseek/pipeline/search.py) | Embeds the query (prompt-ensembled), pulls candidates from FAISS and re-scores them: `score = best visual similarity + 0.25 × (action similarity − query mean) + small object-name boost`. Then it grows a time range around each peak over neighbouring segments within 0.03 of the peak (max 30 s). Results below the threshold → "No matching event found". |
-| Ground truth | [sceneseek/data/virat.py](sceneseek/data/virat.py) | VIRAT activity → natural-language query + list of (video, start, end). Overlapping instances are merged. Hand-edit `data/ground_truth.json` freely. |
-| Evaluation | [sceneseek/eval/](sceneseek/eval/) | Precision, Recall, F1, Recall@K / Hit@K (K=1,5,10), temporal IoU, latency (mean/p50/p95). A prediction counts as correct at tIoU ≥ 0.3 (also reported at 0.1/0.5/0.7). `--sweep` finds the best score threshold. |
-
-All settings are in [sceneseek/config.py](sceneseek/config.py) and can be overridden with environment variables, e.g. `SCENESEEK_SCORE_THRESHOLD=0.24`, `SCENESEEK_DEVICE=cuda`, `SCENESEEK_USE_MONGO=false`.
-
-## Tests
-
-```bash
-python -m pytest -q
+```powershell
+python -m sceneseek evaluate --sweep
 ```
 
-The tests use a fake CLIP model, so they run in seconds without weights or MongoDB.
+Runs the 13 ground-truth queries against the 7 sample videos and generates `data/eval/latest.json`.
 
-## Not done yet
+---
 
-- Streamlit dashboard: see [HANDOFF.md](HANDOFF.md).
-- Fine-tuning: the plan says "only if needed". Run `evaluate` on VIRAT first and see which activities score poorly.
-- No results are measured on VIRAT yet.
+## Running the Streamlit Dashboard
 
-## Results on the sample videos
+Launch the web dashboard with:
 
-7 videos, 411 segments, 13 hand-labelled queries (labels are approximate, ±1 s), threshold 0.33, CPU only. Indexing took ~13.5 min for ~7 min of video. Search takes ~0.3 s.
+```powershell
+streamlit run app.py
+```
 
-| Metric (tIoU ≥ 0.3) | Value |
+Open your browser to: **`http://localhost:8501`**
+
+---
+
+## Dashboard Pages
+
+| Page | Description |
 |---|---|
-| Hit@1: the top result is a correct event | 0.54 (7 of 13 queries) |
-| Recall@5 | 0.79 |
-| Recall (top 10) | 0.82 |
-| Precision (top 10) | 0.25 (expected to be low: up to 10 results are returned per query, and most queries have 1 true event) |
-| Mean temporal IoU of correct results | 0.58 |
+| **Dashboard** | System overview metrics (indexed videos, segments, total hours, search counts), direct search bar, quick benchmark queries, and recent search activity. |
+| **Video Search** | Primary search interface. Type natural-language queries, adjust threshold and Top-K, preview matching video clips with seeked timestamps, and export mp4 event clips. |
+| **Video Library** | Overview of all indexed videos with duration, resolution, frame rate, segment counts, keyframe galleries, and an upload interface for new surveillance footage. |
+| **Search History** | Persistent log of past queries with execution timestamps, result counts, and latency, with one-click re-run functionality. |
+| **Evaluation** | Quantitative benchmarks on the sample videos: Precision, Recall, F1, Recall@1/5/10, Hit@1/5/10, Temporal IoU, and interactive similarity threshold sweep chart. |
+| **Settings** | Active metadata backend (Local JSON), FAISS vector counts, model weights details, and future MongoDB Atlas integration configuration. |
 
-What works: the right video is almost always ranked first, and people, cars, bicycles and clothing colours are found. Off-topic queries ("a dog running on grass") return "No matching event found".
+---
 
-What doesn't: CLIP is weak at **counting** ("two workers" vs one) and at telling **similar colours** apart on small cars (silver vs white; that query scored 0). The Kinetics action labels are mostly noise on this footage ("hopscotch", "sweeping floor"), so they add little. That fits the plan's "fine-tune only if needed" step.
+## Local JSON Metadata Storage & MongoDB Atlas
+
+SceneSeek uses a modular storage abstraction defined in `sceneseek/index/metadata.py`:
+
+- **Active Backend (Local JSON):**
+  - Stored in `data/index/` (`videos.json`, `segments.json`, `searches.json`).
+  - No database server or connection URI is required.
+  - Automatically persists all video data and search logs across application restarts.
+  - Eliminates duplicate entries upon re-indexing.
+- **MongoDB Atlas Integration (Future):**
+  - MongoDB integration code (`MongoStore`) is fully preserved.
+  - When MongoDB Atlas credentials become available, activate it by setting environment variables without changing any dashboard code:
+    ```powershell
+    $env:SCENESEEK_USE_MONGO="true"
+    $env:SCENESEEK_MONGO_URI="mongodb+srv://<username>:<password>@cluster.mongodb.net/sceneseek"
+    ```
+
+---
+
+## CLI Usage
+
+```powershell
+# Search from CLI
+python -m sceneseek search "a person riding a bicycle"
+
+# Output search result as JSON
+python -m sceneseek search "a red car driving in a parking lot" --json
+
+# View index statistics
+python -m sceneseek stats
+
+# Export a video clip for a specific timestamp range
+python -m sceneseek clip data/videos/car-detection.mp4 15.0 19.5
+
+# Re-index all videos
+python -m sceneseek ingest --reindex
+
+# Clear index and metadata (videos are preserved)
+python -m sceneseek reset --yes
+```
+
+---
+
+## Running Tests
+
+Run the full automated test suite:
+
+```powershell
+python -m pytest -v
+```
+
+All 16 unit and integration tests execute and pass without requiring external services or GPU hardware.

@@ -59,7 +59,7 @@ class Config:
     # --- storage ---------------------------------------------------------
     mongo_uri: str = "mongodb://localhost:27017"
     mongo_db: str = "sceneseek"
-    use_mongo: bool = True           # falls back to JSON files if Mongo is unreachable
+    use_mongo: bool = False          # falls back to JSON files if Mongo is unreachable or False
 
     # --- evaluation ------------------------------------------------------
     iou_threshold: float = 0.3       # a prediction counts as correct at or above this temporal IoU
