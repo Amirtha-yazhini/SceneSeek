@@ -1,0 +1,186 @@
+{
+  "source": "hand-labelled from 1 fps contact sheets of the Intel IoT / OpenCV sample videos (approximate, +/- 1 s)",
+  "queries": [
+    {
+      "query_id": "red_car",
+      "query": "a red car driving in a parking lot",
+      "activity": "red_car",
+      "instances": [
+        {
+          "video_id": "car-detection",
+          "start": 15.5,
+          "end": 19.5
+        }
+      ]
+    },
+    {
+      "query_id": "white_car",
+      "query": "a white car driving across a parking lot",
+      "activity": "white_car",
+      "instances": [
+        {
+          "video_id": "car-detection",
+          "start": 5.0,
+          "end": 9.0
+        },
+        {
+          "video_id": "car-detection",
+          "start": 26.0,
+          "end": 28.5
+        },
+        {
+          "video_id": "person-bicycle-car-detection",
+          "start": 14.5,
+          "end": 19.5
+        }
+      ]
+    },
+    {
+      "query_id": "silver_car",
+      "query": "a silver car driving through a parking lot",
+      "activity": "silver_car",
+      "instances": [
+        {
+          "video_id": "car-detection",
+          "start": 15.0,
+          "end": 18.5
+        },
+        {
+          "video_id": "person-bicycle-car-detection",
+          "start": 44.0,
+          "end": 49.5
+        }
+      ]
+    },
+    {
+      "query_id": "bicycle",
+      "query": "a person riding a bicycle",
+      "activity": "bicycle",
+      "instances": [
+        {
+          "video_id": "person-bicycle-car-detection",
+          "start": 25.0,
+          "end": 30.0
+        },
+        {
+          "video_id": "person-bicycle-car-detection",
+          "start": 45.0,
+          "end": 50.0
+        }
+      ]
+    },
+    {
+      "query_id": "man_parking_lot",
+      "query": "a man walking across an empty parking lot",
+      "activity": "man_parking_lot",
+      "instances": [
+        {
+          "video_id": "person-bicycle-car-detection",
+          "start": 2.0,
+          "end": 8.0
+        },
+        {
+          "video_id": "person-bicycle-car-detection",
+          "start": 40.0,
+          "end": 46.0
+        }
+      ]
+    },
+    {
+      "query_id": "man_tshirt_hallway",
+      "query": "a man in a dark t-shirt walking towards the camera in a hallway",
+      "activity": "man_tshirt_hallway",
+      "instances": [
+        {
+          "video_id": "face-demographics-walking",
+          "start": 3.0,
+          "end": 10.0
+        }
+      ]
+    },
+    {
+      "query_id": "woman_white_dress",
+      "query": "a woman in a white dress walking next to a man in a hallway",
+      "activity": "woman_white_dress",
+      "instances": [
+        {
+          "video_id": "face-demographics-walking",
+          "start": 19.0,
+          "end": 26.0
+        }
+      ]
+    },
+    {
+      "query_id": "three_people_hallway",
+      "query": "three people walking together towards the camera",
+      "activity": "three_people_hallway",
+      "instances": [
+        {
+          "video_id": "face-demographics-walking",
+          "start": 36.0,
+          "end": 43.5
+        }
+      ]
+    },
+    {
+      "query_id": "woman_cardigan",
+      "query": "a woman with long hair wearing a grey cardigan",
+      "activity": "woman_cardigan",
+      "instances": [
+        {
+          "video_id": "face-demographics-walking",
+          "start": 53.0,
+          "end": 58.0
+        }
+      ]
+    },
+    {
+      "query_id": "two_people_room",
+      "query": "two people walking across a room with a wooden floor",
+      "activity": "two_people_room",
+      "instances": [
+        {
+          "video_id": "people-detection",
+          "start": 15.0,
+          "end": 21.0
+        }
+      ]
+    },
+    {
+      "query_id": "three_people_room",
+      "query": "three people walking across a room with a wooden floor",
+      "activity": "three_people_room",
+      "instances": [
+        {
+          "video_id": "people-detection",
+          "start": 29.0,
+          "end": 35.0
+        }
+      ]
+    },
+    {
+      "query_id": "workers_vests",
+      "query": "two construction workers in orange safety vests and hard hats walking side by side",
+      "activity": "workers_vests",
+      "instances": [
+        {
+          "video_id": "worker-zone-detection",
+          "start": 35.0,
+          "end": 44.0
+        }
+      ]
+    },
+    {
+      "query_id": "store_shelf",
+      "query": "a woman reaching for an item on a store shelf",
+      "activity": "store_shelf",
+      "instances": [
+        {
+          "video_id": "store-aisle-detection",
+          "start": 14.0,
+          "end": 30.0
+        }
+      ]
+    }
+  ]
+}
